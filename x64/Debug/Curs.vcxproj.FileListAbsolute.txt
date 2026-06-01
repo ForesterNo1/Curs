@@ -1,0 +1,2 @@
+C:\SEM_4_Codes\ASS\Curs\Curs\x64\Debug\Curs.vcxproj.AssemblyReference.cache
+C:\SEM_4_Codes\ASS\Curs\Curs\x64\Debug\Curs.exe
