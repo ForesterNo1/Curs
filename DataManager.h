@@ -142,6 +142,13 @@ public:
         operationLog += "---\n";
         InsertToStructures_Vol(idx, true);
         return 0;
+        // Если ХТ заполнена более чем на 80% — расширяем
+        if (volCount >= htVolunteers->GetSize() * 0.8) {
+            int newSize = NextPrime(htVolunteers->GetSize() * 2);
+            RebuildStructures(newSize);
+            operationLog += "[ХТ авторасширение] Новый размер: "
+                + std::to_string(newSize) + "\n";
+        }
     }
 
     // Удалить волонтёра по индексу
@@ -238,6 +245,12 @@ public:
         operationLog += "---\n";
         InsertToStructures_Ev(idx, true);
         return 0;
+        if (evCount >= htEvents->GetSize() * 0.8) {
+            int newSize = NextPrime(htEvents->GetSize() * 2);
+            RebuildStructures(newSize);
+            operationLog += "[ХТ авторасширение] Новый размер: "
+                + std::to_string(newSize) + "\n";
+        }
     }
 
     // Удалить мероприятие по индексу
@@ -304,7 +317,6 @@ public:
         std::ifstream f(path);
         if (!f.is_open()) return false;
 
-        // Очищаем
         volCount = 0;
         htVolunteers->Clear();
         bstVolunteers->Clear();
@@ -314,14 +326,11 @@ public:
             if (line.empty()) continue;
             char buf[512];
             strncpy_s(buf, line.c_str(), 511);
-
             char* ctx = nullptr;
             char* fio = strtok_s(buf, ";", &ctx);
             char* city = strtok_s(nullptr, ";", &ctx);
             char* skills = strtok_s(nullptr, ";", &ctx);
-
             if (!fio || !city || !skills) continue;
-
             int idx = volCount++;
             strncpy_s(volunteers[idx].fio, fio, 99);
             strncpy_s(volunteers[idx].city, city, 99);
@@ -329,6 +338,18 @@ public:
             InsertToStructures_Vol(idx);
         }
         f.close();
+
+        // ── НОВОЕ: пересобрать ХТ если заполнена более чем на 70% ──
+        if (volCount >= htVolunteers->GetSize() * 0.7) {
+            int newSize = NextPrime(volCount * 2);
+            delete htVolunteers;
+            delete bstVolunteers;
+            htVolunteers = new HashTable(newSize);
+            bstVolunteers = new BST();
+            for (int i = 0; i < volCount; i++)
+                InsertToStructures_Vol(i);
+        }
+
         return true;
     }
 
@@ -366,6 +387,15 @@ public:
             InsertToStructures_Ev(idx);
         }
         f.close();
+        if (evCount >= htEvents->GetSize() * 0.7) {
+            int newSize = NextPrime(evCount * 2);
+            delete htEvents;
+            delete bstEvents;
+            htEvents = new HashTable(newSize);
+            bstEvents = new BST();
+            for (int i = 0; i < evCount; i++)
+                InsertToStructures_Ev(i);
+        }
         return true;
     }
 
@@ -398,6 +428,18 @@ public:
     }
 
 private:
+
+    // Следующее простое число >= n
+    int NextPrime(int n) {
+        if (n < 3) return 3;
+        int candidate = (n % 2 == 0) ? n + 1 : n;
+        for (;; candidate += 2) {
+            bool prime = true;
+            for (int j = 3; j * j <= candidate; j += 2)
+                if (candidate % j == 0) { prime = false; break; }
+            if (prime) return candidate;
+        }
+    }
     // Пересобрать только ХТ и КЧД после удаления
     // (индексы в массиве сдвинулись — надо обновить)
     void RebuildAfterDelete() {
