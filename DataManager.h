@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <cstring>
+#include <vector>
 
 #define MAX_RECORDS 1000
 
@@ -426,7 +427,44 @@ public:
         f.close();
         return true;
     }
+    // ===== ФИЛЬТРАЦИЯ ДЛЯ ОТЧЁТА И UI =====
 
+    struct FilterState {
+        std::string fio;
+        std::string city;
+    };
+
+    // Волонтёры с фильтром
+    void GetFilteredVolunteers(std::vector<int>& out, const FilterState& f)
+    {
+        out.clear();
+        for (int i = 0; i < volCount; i++)
+        {
+            bool ok = true;
+            if (!f.fio.empty() && std::string(volunteers[i].fio).find(f.fio) == std::string::npos)
+                ok = false;
+            if (!f.city.empty() && std::string(volunteers[i].city) != f.city)
+                ok = false;
+
+            if (ok) out.push_back(i);
+        }
+    }
+
+    // Мероприятия с фильтром
+    void GetFilteredEvents(std::vector<int>& out, const FilterState& f)
+    {
+        out.clear();
+        for (int i = 0; i < evCount; i++)
+        {
+            bool ok = true;
+            if (!f.fio.empty() && std::string(events[i].vol_fio).find(f.fio) == std::string::npos)
+                ok = false;
+            if (!f.city.empty() && std::string(events[i].city) != f.city)
+                ok = false;
+
+            if (ok) out.push_back(i);
+        }
+    }
 private:
 
     // Следующее простое число >= n
