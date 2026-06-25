@@ -2,18 +2,100 @@
 #include <string>
 #include <cstring>
 
+// ═══════════════════════════════════════════════
+// Узел двусвязного списка в элементе дерева
+// ═══════════════════════════════════════════════
 struct ChainNode {
     int        index;
+    ChainNode* prev;
     ChainNode* next;
-    ChainNode(int idx) : index(idx), next(nullptr) {}
+
+    ChainNode(int idx) : index(idx), prev(nullptr), next(nullptr) {}
 };
 
+// ═══════════════════════════════════════════════
+// Двусвязный список индексов (в узле дерева)
+// ═══════════════════════════════════════════════
+struct ChainList {
+    ChainNode* head;
+    ChainNode* tail;
+    int        count;
+
+    ChainList() : head(nullptr), tail(nullptr), count(0) {}
+
+    // Добавить в конец
+    void AddLast(int index) {
+        ChainNode* node = new ChainNode(index);
+        if (!tail) {
+            head = tail = node;
+        }
+        else {
+            node->prev = tail;
+            tail->next = node;
+            tail = node;
+        }
+        count++;
+    }
+
+    // Удалить по значению индекса
+    bool Remove(int index) {
+        ChainNode* cur = head;
+        while (cur) {
+            if (cur->index == index) {
+                if (cur->prev) cur->prev->next = cur->next;
+                else           head = cur->next;
+                if (cur->next) cur->next->prev = cur->prev;
+                else           tail = cur->prev;
+                delete cur;
+                count--;
+                return true;
+            }
+            cur = cur->next;
+        }
+        return false;
+    }
+
+    // Очистить весь список
+    void Clear() {
+        ChainNode* cur = head;
+        while (cur) {
+            ChainNode* tmp = cur->next;
+            delete cur;
+            cur = tmp;
+        }
+        head = tail = nullptr;
+        count = 0;
+    }
+
+    bool Empty() const { return head == nullptr; }
+
+    // Печать цепочки для отладки
+    std::string Print() const {
+        std::string out = "";
+        ChainNode* cur = head;
+        while (cur) {
+            char buf[32];
+            snprintf(buf, sizeof(buf), "%d", cur->index);
+            out += buf;
+            if (cur->next) out += " ↔ ";
+            cur = cur->next;
+        }
+        return out;
+    }
+};
+
+// ═══════════════════════════════════════════════
+// Цвет узла КЧД
+// ═══════════════════════════════════════════════
 enum RBColor { RB_RED, RB_BLACK };
 
+// ═══════════════════════════════════════════════
+// Узел красно-чёрного дерева
+// ═══════════════════════════════════════════════
 struct RBNode {
-    char       key[300];
-    ChainNode* chain;
-    RBColor    color;
+    char      key[300];
+    ChainList chain;       // двусвязный список индексов
+    RBColor   color;
     RBNode* left;
     RBNode* right;
     RBNode* parent;
@@ -22,10 +104,13 @@ struct RBNode {
         : color(c), left(nullptr), right(nullptr), parent(nullptr)
     {
         strncpy_s(key, k, 299);
-        chain = new ChainNode(idx);
+        chain.AddLast(idx);
     }
 };
 
+// ═══════════════════════════════════════════════
+// Красно-чёрное дерево
+// ═══════════════════════════════════════════════
 class BST {
 private:
     RBNode* root;
@@ -33,13 +118,11 @@ private:
 
     void InitNIL() {
         NIL = new RBNode("", -1, RB_BLACK);
+        NIL->chain.Clear();
         NIL->left = NIL->right = NIL->parent = nullptr;
-        // Удаляем автоматически созданную цепочку
-        delete NIL->chain;
-        NIL->chain = nullptr;
     }
 
-    // ── Повороты ──────────────────────────────────
+    // ── Повороты ──────────────────────────────
     void RotateLeft(RBNode* x) {
         RBNode* y = x->right;
         x->right = y->left;
@@ -64,7 +147,7 @@ private:
         x->parent = y;
     }
 
-    // ── Балансировка после вставки ────────────────
+    // ── Балансировка после вставки ────────────
     void InsertFix(RBNode* z) {
         while (z->parent && z->parent->color == RB_RED) {
             RBNode* gp = z->parent->parent;
@@ -78,10 +161,7 @@ private:
                     z = gp;
                 }
                 else {
-                    if (z == z->parent->right) {
-                        z = z->parent;
-                        RotateLeft(z);
-                    }
+                    if (z == z->parent->right) { z = z->parent; RotateLeft(z); }
                     z->parent->color = RB_BLACK;
                     gp->color = RB_RED;
                     RotateRight(gp);
@@ -96,10 +176,7 @@ private:
                     z = gp;
                 }
                 else {
-                    if (z == z->parent->left) {
-                        z = z->parent;
-                        RotateRight(z);
-                    }
+                    if (z == z->parent->left) { z = z->parent; RotateRight(z); }
                     z->parent->color = RB_BLACK;
                     gp->color = RB_RED;
                     RotateLeft(gp);
@@ -109,7 +186,7 @@ private:
         root->color = RB_BLACK;
     }
 
-    // ── Transplant ────────────────────────────────
+    // ── Трансплантация ────────────────────────
     void Transplant(RBNode* u, RBNode* v) {
         if (!u->parent)                root = v;
         else if (u == u->parent->left) u->parent->left = v;
@@ -117,13 +194,13 @@ private:
         if (v) v->parent = u->parent;
     }
 
-    // ── Максимум левого поддерева (для удаления) ──
+    // ── Максимум левого поддерева ─────────────
     RBNode* MaxNode(RBNode* node) {
         while (node->right != NIL) node = node->right;
         return node;
     }
 
-    // ── Балансировка после удаления ───────────────
+    // ── Балансировка после удаления ───────────
     void DeleteFix(RBNode* x, RBNode* xParent) {
         while (x != root && (!x || x == NIL || x->color == RB_BLACK)) {
             if (!xParent) break;
@@ -132,28 +209,24 @@ private:
                 if (w && w != NIL && w->color == RB_RED) {
                     w->color = RB_BLACK;
                     xParent->color = RB_RED;
-                    RotateLeft(xParent);
-                    w = xParent->right;
+                    RotateLeft(xParent); w = xParent->right;
                 }
                 if (!w || w == NIL) break;
-                bool leftBlack = (!w->left || w->left == NIL || w->left->color == RB_BLACK);
-                bool rightBlack = (!w->right || w->right == NIL || w->right->color == RB_BLACK);
-                if (leftBlack && rightBlack) {
-                    w->color = RB_RED;
+                bool lB = (!w->left || w->left == NIL || w->left->color == RB_BLACK);
+                bool rB = (!w->right || w->right == NIL || w->right->color == RB_BLACK);
+                if (lB && rB) {
+                    if (w) w->color = RB_RED;
                     x = xParent; xParent = x->parent;
                 }
                 else {
-                    if (rightBlack) {
+                    if (rB) {
                         if (w->left && w->left != NIL) w->left->color = RB_BLACK;
-                        w->color = RB_RED;
-                        RotateRight(w);
-                        w = xParent->right;
+                        if (w) w->color = RB_RED; RotateRight(w); w = xParent->right;
                     }
-                    w->color = xParent->color;
+                    if (w) w->color = xParent->color;
                     xParent->color = RB_BLACK;
                     if (w->right && w->right != NIL) w->right->color = RB_BLACK;
-                    RotateLeft(xParent);
-                    x = root; xParent = nullptr;
+                    RotateLeft(xParent); x = root; xParent = nullptr;
                 }
             }
             else {
@@ -161,35 +234,31 @@ private:
                 if (w && w != NIL && w->color == RB_RED) {
                     w->color = RB_BLACK;
                     xParent->color = RB_RED;
-                    RotateRight(xParent);
-                    w = xParent->left;
+                    RotateRight(xParent); w = xParent->left;
                 }
                 if (!w || w == NIL) break;
-                bool leftBlack = (!w->left || w->left == NIL || w->left->color == RB_BLACK);
-                bool rightBlack = (!w->right || w->right == NIL || w->right->color == RB_BLACK);
-                if (leftBlack && rightBlack) {
-                    w->color = RB_RED;
-                    x = xParent; xParent = x->parent;
+                bool lB = (!w->left || w->left == NIL || w->left->color == RB_BLACK);
+                bool rB = (!w->right || w->right == NIL || w->right->color == RB_BLACK);
+                if (lB && rB) {
+                    if (w) w->color = RB_RED;
+                    x = xParent; xParent = x ? x->parent : nullptr;
                 }
                 else {
-                    if (leftBlack) {
+                    if (lB) {
                         if (w->right && w->right != NIL) w->right->color = RB_BLACK;
-                        w->color = RB_RED;
-                        RotateLeft(w);
-                        w = xParent->left;
+                        if (w) w->color = RB_RED; RotateLeft(w); w = xParent->left;
                     }
-                    w->color = xParent->color;
+                    if (w) w->color = xParent->color;
                     xParent->color = RB_BLACK;
                     if (w->left && w->left != NIL) w->left->color = RB_BLACK;
-                    RotateRight(xParent);
-                    x = root; xParent = nullptr;
+                    RotateRight(xParent); x = root; xParent = nullptr;
                 }
             }
         }
         if (x && x != NIL) x->color = RB_BLACK;
     }
 
-    // ── Удаление узла (через макс. левого поддерева)
+    // ── Удаление узла ─────────────────────────
     void DeleteNode(RBNode* z) {
         RBNode* y = z;
         RBNode* x = nullptr;
@@ -205,16 +274,13 @@ private:
             Transplant(z, z->left);
         }
         else {
-            // ── МАКСИМУМ ЛЕВОГО поддерева ─────────
             y = MaxNode(z->left);
             yOrigColor = y->color;
-            x = y->left;  // у максимума нет правого потомка
-            if (y->parent == z) {
-                xParent = y;
-            }
+            x = y->left;
+            if (y->parent == z) { xParent = y; }
             else {
                 xParent = y->parent;
-                Transplant(y, y->left);   // заменяем y его левым
+                Transplant(y, y->left);
                 y->left = z->left;
                 if (y->left) y->left->parent = y;
             }
@@ -224,17 +290,13 @@ private:
             y->color = z->color;
         }
 
-        // Освобождаем цепочку удаляемого узла
-        ChainNode* c = z->chain;
-        while (c) { ChainNode* t = c->next; delete c; c = t; }
-        z->chain = nullptr;
+        z->chain.Clear();
         delete z;
 
-        if (yOrigColor == RB_BLACK)
-            DeleteFix(x, xParent);
+        if (yOrigColor == RB_BLACK) DeleteFix(x, xParent);
     }
 
-    // ── Поиск узла ────────────────────────────────
+    // ── Поиск узла ────────────────────────────
     RBNode* FindNode(const char* key) const {
         RBNode* cur = root;
         while (cur && cur != NIL) {
@@ -246,33 +308,21 @@ private:
         return nullptr;
     }
 
-    // ── Печать: СПРАВА НАЛЕВО (убывающий порядок) ─
-    // right → node → left
+    // ── Печать: правое → узел → левое (убывание)
     void Print(RBNode* node, std::string& out, int depth) const {
         if (!node || node == NIL) return;
-
-        // Сначала правое поддерево
         Print(node->right, out, depth + 1);
 
-        // Узел
         std::string indent(depth * 4, ' ');
         const char* col = (node->color == RB_RED) ? "[R]" : "[B]";
         char buf[512];
         snprintf(buf, sizeof(buf), "%s%s \"%s\"", indent.c_str(), col, node->key);
         out += buf;
-
-        // Цепочка индексов
-        out += "  idx:";
-        ChainNode* c = node->chain;
-        while (c) {
-            snprintf(buf, sizeof(buf), "%d", c->index);
-            out += buf;
-            if (c->next) out += ",";
-            c = c->next;
-        }
+        out += "  список(";
+        out += std::to_string(node->chain.count) + "): ";
+        out += node->chain.Print();
         out += "\n";
 
-        // Потом левое поддерево
         Print(node->left, out, depth + 1);
     }
 
@@ -280,8 +330,7 @@ private:
         if (!node || node == NIL) return;
         Clear(node->left);
         Clear(node->right);
-        ChainNode* c = node->chain;
-        while (c) { ChainNode* t = c->next; delete c; c = t; }
+        node->chain.Clear();
         delete node;
     }
 
@@ -290,13 +339,11 @@ public:
 
     ~BST() { Clear(root); delete NIL; }
 
-    // ── Вставка ───────────────────────────────────
+    // ── Вставка ───────────────────────────────
     void Insert(const char* key, int index) {
         RBNode* existing = FindNode(key);
         if (existing) {
-            ChainNode* c = new ChainNode(index);
-            c->next = existing->chain;
-            existing->chain = c;
+            existing->chain.AddLast(index);
             return;
         }
         RBNode* z = new RBNode(key, index, RB_RED);
@@ -310,53 +357,41 @@ public:
             else                             x = x->right;
         }
         z->parent = y;
-        if (!y)                                  root = z;
-        else if (strcmp(z->key, y->key) < 0)     y->left = z;
-        else                                     y->right = z;
+        if (!y)                                root = z;
+        else if (strcmp(z->key, y->key) < 0)   y->left = z;
+        else                                   y->right = z;
 
         InsertFix(z);
     }
 
-    // ── Удаление ──────────────────────────────────
+    // ── Удаление ──────────────────────────────
     bool Delete(const char* key, int index) {
         RBNode* node = FindNode(key);
         if (!node) return false;
-
-        ChainNode* cur = node->chain, * prev = nullptr;
-        while (cur) {
-            if (cur->index == index) {
-                if (prev) prev->next = cur->next;
-                else      node->chain = cur->next;
-                delete cur;
-                break;
-            }
-            prev = cur; cur = cur->next;
-        }
-        if (!node->chain)
-            DeleteNode(node);
+        node->chain.Remove(index);
+        if (node->chain.Empty()) DeleteNode(node);
         return true;
     }
 
-    // ── Поиск ─────────────────────────────────────
+    // ── Поиск ─────────────────────────────────
     int Search(const char* key, int& steps) const {
         steps = 0;
         RBNode* cur = root;
         while (cur && cur != NIL) {
             steps++;
             int cmp = strcmp(key, cur->key);
-            if (cmp == 0) return cur->chain->index;
+            if (cmp == 0) return cur->chain.head->index;
             else if (cmp < 0) cur = cur->left;
             else               cur = cur->right;
         }
         return -1;
     }
 
-    // ── Печать для отладки ────────────────────────
+    // ── Печать для отладки ────────────────────
     std::string Print() const {
         if (!root || root == NIL) return "[КЧД пусто]\n";
-        std::string out = "Обход: справа налево (убывание)\n";
-        out += "Удаление: через макс. левого поддерева\n";
-        out += "[R]=красный  [B]=чёрный\n";
+        std::string out = "Обход: справа налево | Удаление: макс. левого поддерева\n";
+        out += "[R]=красный  [B]=чёрный | список(N): head ↔ ... ↔ tail\n";
         out += std::string(50, '-') + "\n";
         Print(root, out, 0);
         return out;

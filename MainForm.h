@@ -517,10 +517,14 @@ namespace BureauOfGoodDeeds {
             htOut += dm->htEvents->Print();
             rtbInitialHT->Text = gcnew String(htOut.c_str());
 
-            std::string bstOut = "=== КЧД Волонтёры (начальное) ===\n";
+            std::string bstOut = "=== КЧД Волонтёры по ФИО|Город (начальное) ===\n";
             bstOut += dm->bstVolunteers->Print();
-            bstOut += "\n=== КЧД Мероприятия (начальное) ===\n";
+            bstOut += "\n=== КЧД Мероприятия по ФИО|Город (начальное) ===\n";
             bstOut += dm->bstEvents->Print();
+            bstOut += "\n=== КЧД Мероприятия по Дате (начальное) ===\n";
+            bstOut += "Легенда ключа: ГГГГММДД (напр. 20240115 = 15 январь 2024)\n";
+            bstOut += std::string(40, '-') + "\n";
+            bstOut += dm->bstEventsByDate->Print();
             rtbInitialBST->Text = gcnew String(bstOut.c_str());
 
             initialStateCaptured = true;
@@ -569,14 +573,25 @@ namespace BureauOfGoodDeeds {
                 "     ЛОГ ОПЕРАЦИИ\n"
                 "===========================\n";
             bstOut += dm->operationLog + "\n";
+
             bstOut += "===========================\n"
-                "     КЧД Волонтёры\n"
+                "  КЧД Волонтёры ФИО|Город\n"
                 "===========================\n";
             bstOut += dm->bstVolunteers->Print();
+
             bstOut += "\n===========================\n"
-                "     КЧД Мероприятия\n"
+                "  КЧД Мероприятия ФИО|Город\n"
                 "===========================\n";
             bstOut += dm->bstEvents->Print();
+
+            bstOut += "\n===========================\n"
+                "  КЧД Мероприятия по Дате\n"
+                "  Ключ: ГГГГММДД\n"
+                "===========================\n";
+            bstOut += "Пример: 20240115 = 15 январь 2024\n";
+            bstOut += std::string(40, '-') + "\n";
+            bstOut += dm->bstEventsByDate->Print();
+
             rtbCurrentBST->Text = gcnew String(bstOut.c_str());
         }
 
