@@ -7,7 +7,7 @@
 #include <cstring>
 #include <vector>
 
-#define MAX_RECORDS 1000
+#define MAX_RECORDS 3000
 
 class DataManager {
 public:
